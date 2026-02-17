@@ -939,7 +939,7 @@ class PI05Policy(PreTrainedPolicy):
         cache_dir: str | Path | None = None,
         local_files_only: bool = False,
         revision: str | None = None,
-        strict: bool = True,
+        strict: bool = False,
         **kwargs,
     ) -> T:
         """Override the from_pretrained method to handle key remapping and display important disclaimer."""
