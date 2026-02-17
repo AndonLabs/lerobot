@@ -68,7 +68,8 @@ class Piper(Robot):
     def disconnect(self) -> None:
         self.sdk.disconnect()
         for cam in self.cameras.values():
-            cam.disconnect()
+            if cam.is_connected:
+                cam.disconnect()
 
     @property
     def is_calibrated(self) -> bool:
