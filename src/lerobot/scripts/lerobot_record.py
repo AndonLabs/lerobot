@@ -76,6 +76,7 @@ from lerobot.cameras.opencv.configuration_opencv import OpenCVCameraConfig  # no
 from lerobot.cameras.reachy2_camera.configuration_reachy2_camera import Reachy2CameraConfig  # noqa: F401
 from lerobot.cameras.realsense.configuration_realsense import RealSenseCameraConfig  # noqa: F401
 from lerobot.cameras.zmq.configuration_zmq import ZMQCameraConfig  # noqa: F401
+from lerobot.cameras.depthai.configuration_depthai import DepthAICameraConfig  # noqa: F401
 from lerobot.configs import parser
 from lerobot.configs.policies import PreTrainedConfig
 from lerobot.datasets.image_writer import safe_stop_image_writer
@@ -106,6 +107,7 @@ from lerobot.robots import (  # noqa: F401
     make_robot_from_config,
     omx_follower,
     openarm_follower,
+    piper,
     reachy2,
     so_follower,
     unitree_g1 as unitree_g1_robot,
@@ -120,6 +122,7 @@ from lerobot.teleoperators import (  # noqa: F401
     make_teleoperator_from_config,
     omx_leader,
     openarm_leader,
+    piper_leader,
     reachy2_teleoperator,
     so_leader,
     unitree_g1,
