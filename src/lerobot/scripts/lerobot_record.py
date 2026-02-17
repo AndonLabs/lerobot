@@ -477,14 +477,18 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
         preprocessor = None
         postprocessor = None
         if cfg.policy is not None:
+            preprocessor_overrides = {
+                "device_processor": {"device": cfg.policy.device},
+            }
+            if cfg.dataset.rename_map:
+                preprocessor_overrides["rename_observations_processor"] = {
+                    "rename_map": cfg.dataset.rename_map
+                }
             preprocessor, postprocessor = make_pre_post_processors(
                 policy_cfg=cfg.policy,
                 pretrained_path=cfg.policy.pretrained_path,
                 dataset_stats=rename_stats(dataset.meta.stats, cfg.dataset.rename_map),
-                preprocessor_overrides={
-                    "device_processor": {"device": cfg.policy.device},
-                    "rename_observations_processor": {"rename_map": cfg.dataset.rename_map},
-                },
+                preprocessor_overrides=preprocessor_overrides,
             )
 
         robot.connect()
