@@ -1046,6 +1046,16 @@ class PI05Policy(PreTrainedPolicy):
         except Exception as e:
             print(f"Warning: Could not remap state dict keys: {e}")
 
+        # Fix weight tying: some training services (e.g. Qualia) save lm_head
+        # but omit embed_tokens (they share the same tensor). Copy lm_head →
+        # embed_tokens so the model can process language prompts.
+        pwe = model.model.paligemma_with_expert
+        lm_head = pwe.paligemma.lm_head.weight
+        embed = pwe.paligemma.model.language_model.embed_tokens.weight
+        if lm_head is not None and not torch.equal(lm_head.data, embed.data):
+            embed.data.copy_(lm_head.data)
+            print(f"Fixed weight tying: copied lm_head → embed_tokens ({lm_head.shape})")
+
         return model
 
     def _fix_pytorch_state_dict_keys(
