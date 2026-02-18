@@ -50,9 +50,9 @@ class DepthAICameraConfig(CameraConfig):
     width: int = 1280
     height: int = 720
 
-    # Lock camera controls for VLA consistency between training and inference.
-    # When lock_controls=True, auto-focus/exposure/white-balance run during the
-    # warmup period, then get locked so they stay fixed for the rest of the session.
-    # Set manual_focus (0-255, 0=infinity) to override auto-focus entirely.
-    lock_controls: bool = True
-    manual_focus: int | None = None
+    # Manual camera controls for VLA consistency between training and inference.
+    # Set these to fixed values so every session produces identical images.
+    # Run `python -m lerobot.cameras.depthai.camera_depthai` to find good values.
+    manual_focus: int | None = None          # 0-255 (0=infinity, 255=macro)
+    manual_exposure: list[int] | None = None  # [exposure_us, iso] e.g. [10000, 400]
+    manual_white_balance: int | None = None  # Color temperature in Kelvin, e.g. 4000
