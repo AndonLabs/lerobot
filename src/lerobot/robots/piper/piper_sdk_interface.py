@@ -47,6 +47,17 @@ class PiperSDKInterface:
 
         # Joint mode, 100% speed, high-follow mode (0xAD)
         self.piper.MotionCtrl_2(0x01, 0x01, 100, 0xAD)
+        time.sleep(0.05)
+
+        # Immediately command the arm to its current position so it doesn't
+        # lunge to position 0 or a stale cached target.
+        js = self.piper.GetArmJointMsgs().joint_state
+        gr = self.piper.GetArmGripperMsgs().gripper_state
+        self.piper.JointCtrl(
+            js.joint_1, js.joint_2, js.joint_3,
+            js.joint_4, js.joint_5, js.joint_6,
+        )
+        self.piper.GripperCtrl(gr.grippers_angle, 1000, 0x01, 0)
         time.sleep(0.1)
         logger.info("Follower arm enabled and ready.")
 
