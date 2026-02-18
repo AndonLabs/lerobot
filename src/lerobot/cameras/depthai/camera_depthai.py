@@ -165,10 +165,14 @@ class DepthAICamera(Camera):
         # Create camera node
         cam = self.pipeline.create(dai.node.Camera).build(dai_socket)
 
-        # Set manual focus if specified (before pipeline start)
-        if self.config.manual_focus is not None:
-            cam.initialControl.setManualFocus(self.config.manual_focus)
-            logger.info(f"{self} manual focus set to {self.config.manual_focus}")
+        # Apply manual controls before pipeline start
+        cfg = self.config
+        if cfg.manual_focus is not None:
+            cam.initialControl.setManualFocus(cfg.manual_focus)
+        if cfg.manual_exposure is not None:
+            cam.initialControl.setManualExposure(cfg.manual_exposure[0], cfg.manual_exposure[1])
+        if cfg.manual_white_balance is not None:
+            cam.initialControl.setManualWhiteBalance(cfg.manual_white_balance)
 
         # Request output at specified resolution
         output = cam.requestOutput((self.width, self.height), type=dai.ImgFrame.Type.BGR888i)
@@ -180,9 +184,11 @@ class DepthAICamera(Camera):
         # Start pipeline
         self.pipeline.start()
 
+        has_manual = cfg.manual_focus is not None or cfg.manual_exposure is not None or cfg.manual_white_balance is not None
+
         if warmup:
-            # Let auto-exposure/white-balance/focus settle during warmup
-            warmup_secs = 2.0 if self.config.lock_controls else 1.0
+            # Let auto settings settle (longer warmup if we'll lock them)
+            warmup_secs = 2.0 if not has_manual else 1.0
             start_time = time.time()
             while time.time() - start_time < warmup_secs:
                 try:
@@ -191,16 +197,23 @@ class DepthAICamera(Camera):
                     pass
                 time.sleep(0.1)
 
-            # Lock controls after warmup so they stay fixed
-            if self.config.lock_controls:
+            # If no manual values set, lock auto values after warmup
+            if not has_manual:
                 ctrl = dai.CameraControl()
                 ctrl.setAutoExposureLock(True)
                 ctrl.setAutoWhiteBalanceLock(True)
-                if self.config.manual_focus is None:
-                    # Lock auto-focus at current position
-                    ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.OFF)
+                ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.OFF)
                 self._control_queue.send(ctrl)
                 logger.info(f"{self} locked auto-exposure, white balance, and focus.")
+            else:
+                locked = []
+                if cfg.manual_focus is not None:
+                    locked.append(f"focus={cfg.manual_focus}")
+                if cfg.manual_exposure is not None:
+                    locked.append(f"exposure={cfg.manual_exposure[0]}us/ISO{cfg.manual_exposure[1]}")
+                if cfg.manual_white_balance is not None:
+                    locked.append(f"wb={cfg.manual_white_balance}K")
+                logger.info(f"{self} manual controls: {', '.join(locked)}")
 
         logger.info(f"{self} connected.")
 
@@ -355,3 +368,46 @@ class DepthAICamera(Camera):
             found_cameras.append(camera_info)
 
         return found_cameras
+
+
+if __name__ == "__main__":
+    """Calibration helper: connects to each camera, lets auto-adjust settle,
+    then prints the values to use as manual_focus / manual_exposure / manual_white_balance."""
+    import sys
+
+    logging.basicConfig(level=logging.INFO)
+
+    device_ids = sys.argv[1:] if len(sys.argv) > 1 else [None]
+    for device_id in device_ids:
+        config = DepthAICameraConfig(device_id=device_id, width=640, height=480, fps=30)
+        cam = DepthAICamera(config)
+        cam.connect(warmup=True)
+
+        # Let auto settings settle for a few more seconds
+        print(f"\n{cam}: waiting 3s for auto-adjust to settle...")
+        start = time.time()
+        while time.time() - start < 3.0:
+            cam.read()
+            time.sleep(0.05)
+
+        # Read current camera metadata from a frame
+        frame_data = cam.queue.get()
+        exposure = frame_data.getExposureTime().total_seconds() * 1_000_000  # to microseconds
+        iso = frame_data.getSensitivity()
+        wb = frame_data.getColorTemperature()
+        lens_pos = frame_data.getLensPosition()
+
+        print(f"\n{'='*50}")
+        print(f"  Camera: {cam}")
+        print(f"  Device ID: {device_id}")
+        print(f"{'='*50}")
+        print(f"  Focus (lens position): {lens_pos}")
+        print(f"  Exposure: {int(exposure)}us, ISO {iso}")
+        print(f"  White Balance: {wb}K")
+        print(f"\n  Config values to use:")
+        print(f"    manual_focus: {lens_pos}")
+        print(f"    manual_exposure: [{int(exposure)}, {iso}]")
+        print(f"    manual_white_balance: {wb}")
+        print(f"{'='*50}\n")
+
+        cam.disconnect()
