@@ -165,6 +165,11 @@ class DepthAICamera(Camera):
         # Create camera node
         cam = self.pipeline.create(dai.node.Camera).build(dai_socket)
 
+        # Set manual focus if specified (before pipeline start)
+        if self.config.manual_focus is not None:
+            cam.initialControl.setManualFocus(self.config.manual_focus)
+            logger.info(f"{self} manual focus set to {self.config.manual_focus}")
+
         # Request output at specified resolution
         output = cam.requestOutput((self.width, self.height), type=dai.ImgFrame.Type.BGR888i)
         self.queue = output.createOutputQueue(maxSize=4, blocking=False)
@@ -172,14 +177,30 @@ class DepthAICamera(Camera):
         # Start pipeline
         self.pipeline.start()
 
+        # Store camera control queue for runtime adjustments
+        self._control_queue = cam.inputControl.createInputQueue()
+
         if warmup:
+            # Let auto-exposure/white-balance/focus settle during warmup
+            warmup_secs = 2.0 if self.config.lock_controls else 1.0
             start_time = time.time()
-            while time.time() - start_time < 1.0:
+            while time.time() - start_time < warmup_secs:
                 try:
                     self.read()
                 except Exception:
                     pass
                 time.sleep(0.1)
+
+            # Lock controls after warmup so they stay fixed
+            if self.config.lock_controls:
+                ctrl = dai.CameraControl()
+                ctrl.setAutoExposureLock(True)
+                ctrl.setAutoWhiteBalanceLock(True)
+                if self.config.manual_focus is None:
+                    # Lock auto-focus at current position
+                    ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.OFF)
+                self._control_queue.send(ctrl)
+                logger.info(f"{self} locked auto-exposure, white balance, and focus.")
 
         logger.info(f"{self} connected.")
 

@@ -49,3 +49,10 @@ class DepthAICameraConfig(CameraConfig):
     fps: int = 30
     width: int = 1280
     height: int = 720
+
+    # Lock camera controls for VLA consistency between training and inference.
+    # When lock_controls=True, auto-focus/exposure/white-balance run during the
+    # warmup period, then get locked so they stay fixed for the rest of the session.
+    # Set manual_focus (0-255, 0=infinity) to override auto-focus entirely.
+    lock_controls: bool = True
+    manual_focus: int | None = None
