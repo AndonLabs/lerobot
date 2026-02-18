@@ -174,11 +174,11 @@ class DepthAICamera(Camera):
         output = cam.requestOutput((self.width, self.height), type=dai.ImgFrame.Type.BGR888i)
         self.queue = output.createOutputQueue(maxSize=4, blocking=False)
 
+        # Create control queue before starting pipeline (required by DepthAI v3)
+        self._control_queue = cam.inputControl.createInputQueue()
+
         # Start pipeline
         self.pipeline.start()
-
-        # Store camera control queue for runtime adjustments
-        self._control_queue = cam.inputControl.createInputQueue()
 
         if warmup:
             # Let auto-exposure/white-balance/focus settle during warmup
