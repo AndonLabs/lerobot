@@ -29,7 +29,11 @@ class PiperSDKInterface:
                 "Did you activate the CAN interface? bash piper_sdk/can_activate.sh"
             )
         self.piper.ConnectPort()
-        time.sleep(0.1)
+        # Flush stale CAN messages so the first get_status() returns real values
+        for _ in range(10):
+            self.piper.GetArmJointMsgs()
+            self.piper.GetArmGripperMsgs()
+            time.sleep(0.02)
 
     def enable(self):
         """Enable the arm for joint control. Call this right before the teleop loop."""

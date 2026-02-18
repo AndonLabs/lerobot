@@ -107,6 +107,15 @@ class PiperLeader(Teleoperator):
             )
 
         self._is_connected = True
+
+        # Flush stale CAN messages by reading a few times.
+        # The first reads after ConnectPort() may return zeros which would
+        # cause the follower arm to jump to a bad position.
+        for _ in range(10):
+            self.piper.GetArmJointMsgs()
+            self.piper.GetArmGripperMsgs()
+            time.sleep(0.02)
+
         logger.info(f"{self} connected.")
 
     @property
