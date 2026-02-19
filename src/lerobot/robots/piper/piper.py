@@ -85,7 +85,7 @@ class Piper(Robot):
         obs_dict = self.sdk.get_status()
 
         for cam_key, cam in self.cameras.items():
-            obs_dict[cam_key] = cam.async_read()
+            obs_dict[cam_key] = cam.read_latest()
         return obs_dict
 
     def send_action(self, action: dict[str, Any]) -> dict[str, Any]:

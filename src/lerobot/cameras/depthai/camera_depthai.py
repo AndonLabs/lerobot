@@ -283,6 +283,23 @@ class DepthAICamera(Camera):
         self.thread = None
         self.stop_event = None
 
+    def read_latest(self, max_age_ms: int = 500) -> np.ndarray:
+        """Return the most recent frame without waiting for a new one."""
+        if not self.is_connected:
+            raise DeviceNotConnectedError(f"{self} is not connected.")
+
+        if self.thread is None or not self.thread.is_alive():
+            self._start_read_thread()
+
+        with self.frame_lock:
+            frame = self.latest_frame
+
+        if frame is None:
+            # No frame yet — fall back to blocking read for the first call
+            return self.async_read(timeout_ms=max_age_ms)
+
+        return frame
+
     def async_read(self, timeout_ms: float = 1000) -> np.ndarray:
         """
         Reads the latest available frame asynchronously.
